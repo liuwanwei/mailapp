@@ -16,7 +16,39 @@ function createWindow () {
   mainWindow.loadFile('index.html')
 
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
+  mainWindow.webContents.openDevTools()
+}
+
+/**
+ * IPC 服务端
+ * 参考：https://gist.github.com/eddieantonio/e17a3e8a093c2e84090a35a9bd2c83d0
+ */
+function createLocalIpcServer () {
+  var net = require('net')
+  var server = net.createServer(client => {
+    const chunks = []
+    console.log('client connected')
+    client.setEncoding('utf8')
+
+    client.on('end', () => {
+      console.log('client disconnected')
+    })
+
+    client.on('data', chunk => {
+      console.log(`Got data: ${chunk}`)
+      chunks.push(chunk)
+
+      if (chunk.match(/\r\n$/)) {
+        const {ping} = JSON.parse(chunks.join(''))
+        client.write(JSON.stringify({pong: ping}))
+      }
+    })
+  })
+
+  server.on('listening', () => {
+    console.log('server listening')
+  })
+  server.listen('/tmp/mailipc.sock')
 }
 
 // This method will be called when Electron has finished
@@ -24,6 +56,8 @@ function createWindow () {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   createWindow()
+
+  createLocalIpcServer()
   
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
